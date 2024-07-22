@@ -54,7 +54,7 @@ I am currently using this myself, [ AbuseipDB Results ](https://www.abuseipdb.co
 
    You can change the name of the log file to whatever.
 
-  ### Example 1
+  ### Example of the log file in action 
    
 ![Example](https://github.com/user-attachments/assets/000ff986-2d39-4748-9d48-07d4eeb26f69)
 
