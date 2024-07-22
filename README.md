@@ -5,7 +5,7 @@ This repository contains three [3] variants of an SSH honeypot. The script is de
 I am currently using this myself, [ AbuseipDB Results ](https://www.abuseipdb.com/user/137416) .
 
 ## Variants
- **SSH-Honeypot-All with** Logging and Geolocation |  This has both Geolocation and Logging.
+ **SSH-Honeypot-All**      Logging and Geolocation |  This has both Geolocation and Logging.
  
  **SSH-Honeypot-NoGeo**    Just No Geolocation |  This just collects the Username:Password used and the IP of the actor.
  
