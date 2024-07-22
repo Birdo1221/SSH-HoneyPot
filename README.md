@@ -5,7 +5,6 @@ This repository contains three [3] variants of an SSH honeypot. The script is de
 I am currently using this myself, [ AbuseipDB Results ](https://www.abuseipdb.com/user/137416) .
 
 ## Variants
-
  **SSH-Honeypot-All with Logging and Geolocation** This has both Geolocation and Logging.
  **SSH-Honeypot-NoGeo just No Geolocation** This just collects the Username:Password used and the IP of the actor.
  **SSH-Honeypot-Clean without Logging or Geolocation** This only runs in the background to detect and report. 
@@ -35,6 +34,12 @@ I am currently using this myself, [ AbuseipDB Results ](https://www.abuseipdb.co
     ```python
     ABUSE_IPDB_API_KEY = 'Replace with Abuse-IPDB API Token'
     ```
+4. You don’t need to manually remove any ports from the list; the script will simply skip any that are already in use.
+    However, to run the server on the ports below 1024, you will need to have sudo / administrative privileges.
+   ```python
+    PORTS = [2222, 2200, 22222, 50000, 3389, 1337, 10001, 222, 2022, 2181, 23, 2000, 830, 2002, 5353, 8081, 6000, 5900]
+    ```
+   
 ## Usage
 
 ### 1. Just need to run the file
