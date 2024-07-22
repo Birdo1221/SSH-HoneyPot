@@ -38,7 +38,7 @@ This repository contains four variants of an SSH honeypot server script. The scr
     ```
 ## Usage
 
-### 1. SSH Honeypot with Logging and Geolocation
+### 1. Just need to run the file
 
 **Run:** `Python3 ssh-honeypot-All.py`
 
