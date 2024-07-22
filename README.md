@@ -1,7 +1,6 @@
 # SSH Honeypot
 
-This repository contains four variants of an SSH honeypot server script. The scripts are designed to capture login attempts, report malicious IP addresses to AbuseIPDB, and optionally log attempts and fetch geolocation data.
-This Logs The Exact Credentials They Used.
+This repository contains four variants of an SSH honeypot server that im currently using. The script is designed to capture login attempts for exact credentaisl used + reporting the IP addresses to AbuseIPDB. 
 
 ## Variants
 
@@ -11,7 +10,6 @@ This Logs The Exact Credentials They Used.
  **SSH Honeypot without Logging or Geolocation**: 
 
 ## Getting Started
-
 ### Prerequisites
 - Python 3.x
 - Paramiko library
