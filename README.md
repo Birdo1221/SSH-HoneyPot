@@ -1,13 +1,12 @@
 # SSH Honeypot
 
-This repository contains four variants of an SSH honeypot server that im currently using. The script is designed to capture login attempts for exact credentaisl used + reporting the IP addresses to AbuseIPDB. 
+This repository contains three [3] variants of an SSH honeypot server that im currently using. The script is designed to capture login attempts for exact credentaisl used + reporting the IP addresses to AbuseIPDB. 
 
 ## Variants
 
- **SSH Honeypot with Logging and Geolocation**
- **SSH Honeypot with Logging Only**
- **SSH Honeypot with Geolocation Only**
- **SSH Honeypot without Logging or Geolocation**: 
+ **SSH-Honeypot-All with Logging and Geolocation** This has both Geolocation and Logging.
+ **SSH-Honeypot-NoGeo just No Geolocation** This just collects the Username:Password used and the IP of the actor.
+ **SSH-Honeypot-Clean without Logging or Geolocation** This only runs in the background to detect and report. 
 
 ## Getting Started
 ### Prerequisites
@@ -39,4 +38,7 @@ This repository contains four variants of an SSH honeypot server that im current
 ### 1. Just need to run the file
 
 **Run:** `Python3 ssh-honeypot-All.py`
+
+### 2. Running the logging varients will create the log file
+**File:** `ssh_login_attempts.log`
 
