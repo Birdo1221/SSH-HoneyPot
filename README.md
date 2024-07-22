@@ -22,13 +22,13 @@ This repository contains four variants of an SSH honeypot server script. The scr
 ### Installation
 
 1. Clone the repository:
-    ```sh
+    ```python
     git clone https://github.com/yourusername/ssh-honeypot.git
     cd ssh-honeypot
     ```
 
 2. Install the required Python packages:
-    ```sh
+    ```python
     pip install paramiko requests
     ```
 
