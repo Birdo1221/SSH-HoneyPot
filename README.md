@@ -23,7 +23,7 @@ I am currently using this myself, [ AbuseipDB Results ](https://www.abuseipdb.co
 
 1. Clone the repository:
     ```sh
-    git clone https://github.com/yourusername/ssh-honeypot.git
+    git clone https://github.com/Birdo1221/SSH-HoneyPot.git
     cd ssh-honeypot
     ```
 
