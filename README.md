@@ -52,3 +52,5 @@ I am currently using this myself, [ AbuseipDB Results ](https://www.abuseipdb.co
 ### 2. Running the logging varients will create the log file
 **File:** `ssh_login_attempts.log`
 
+   You can change the name of the log file to whatever.
+
