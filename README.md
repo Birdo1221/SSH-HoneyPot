@@ -6,7 +6,9 @@ I am currently using this myself, [ AbuseipDB Results ](https://www.abuseipdb.co
 
 ## Variants
  **SSH-Honeypot-All with Logging and Geolocation** This has both Geolocation and Logging.
+ 
  **SSH-Honeypot-NoGeo just No Geolocation** This just collects the Username:Password used and the IP of the actor.
+ 
  **SSH-Honeypot-Clean without Logging or Geolocation** This only runs in the background to detect and report. 
 
 ## Getting Started
