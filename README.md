@@ -41,7 +41,7 @@ I am currently using this myself, [ AbuseipDB Results ](https://www.abuseipdb.co
    ```python
     PORTS = [2222, 2200, 22222, 50000, 3389, 1337, 10001, 222, 2022, 2181, 23, 2000, 830, 2002, 5353, 8081, 6000, 5900]
     ```
-   Im currently using these ports due to them being the highest used port for ssh on shodan / zoomeye.
+   Im currently using these ports due to them being the most commonly used port for ssh on shodan / zoomeye.
    
 ## Usage
 
