@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 import time
 from concurrent.futures import ThreadPoolExecutor
 
-ABUSE_IPDB_API_KEY = 'e99245c63620b31a4336b6eb26d0d071021a7b997412918a601e0d17b9975f562671d9bbada9f7b1'
+ABUSE_IPDB_API_KEY = ''
 LOG_FILE = 'ssh_login_attempts.log'
 HOST_KEY = paramiko.RSAKey.generate(2048)
 PORTS = [2222, 2200, 22222, 50000, 3389, 1337, 10001, 222, 2022, 2181, 23, 2000, 830, 2002, 5353, 8081, 6000, 5900]
