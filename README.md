@@ -1,6 +1,6 @@
 # SSH Honeypot
 
-This repository contains three [3] variants of an SSH honeypot. The script is designed to capture login attempts for exact credentaisl used + reporting the IP addresses to AbuseIPDB. 
+The script is designed to capture login attempts for exact credentaisl used + reporting the IP addresses to AbuseIPDB. 
 
 I am currently using this myself, [ AbuseipDB Results ](https://www.abuseipdb.com/user/137416) .
 
