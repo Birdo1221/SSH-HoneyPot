@@ -6,9 +6,10 @@ import requests
 import subprocess
 from datetime import datetime, timedelta
 import time
+from concurrent.futures import ThreadPoolExecutor
 
-ABUSE_IPDB_API_KEY = 'Replace with Abuse-IPDB API Token'
-LOG_FILE = 'ssh_login_attempts.log' # You can rename the log file if needed 
+ABUSE_IPDB_API_KEY = 'e99245c63620b31a4336b6eb26d0d071021a7b997412918a601e0d17b9975f562671d9bbada9f7b1'
+LOG_FILE = 'ssh_login_attempts.log'
 HOST_KEY = paramiko.RSAKey.generate(2048)
 PORTS = [2222, 2200, 22222, 50000, 3389, 1337, 10001, 222, 2022, 2181, 23, 2000, 830, 2002, 5353, 8081, 6000, 5900]
 
@@ -18,11 +19,12 @@ reporting_interval = timedelta(minutes=15)
 def log_attempt(attempt):
     with open(LOG_FILE, 'a') as log_file:
         log_file.write(json.dumps(attempt) + '\n')
+    print(f"Logged attempt: {attempt}")
 
 def get_geolocation(ip):
     url = f'http://ip-api.com/json/{ip}'
     try:
-        response = requests.get(url)
+        response = requests.get(url, timeout=10)
         if response.status_code == 200:
             return response.json()
     except requests.RequestException as e:
@@ -35,19 +37,26 @@ def report_to_abuse_ipdb(ip):
         print(f'Skipping report for IP {ip} as it was reported recently.')
         return
     
-    curl_command = f'curl https://api.abuseipdb.com/api/v2/report \
-        --data-urlencode "ip={ip}" \
-        -d categories=18,22 \
-        --data-urlencode "comment= [Birdo Server] SSH-Multi login Attempt" \
-        -H "Key: {ABUSE_IPDB_API_KEY}" \
-        -H "Accept: application/json"'
-    
+    url = "https://api.abuseipdb.com/api/v2/report"
+    data = {
+        "ip": ip,
+        "categories": "18,22,14",
+        "comment": "[Birdo Server] SSH-Multi login Attempt"
+    }
+    headers = {
+        "Key": ABUSE_IPDB_API_KEY,
+        "Accept": "application/json"
+    }
+
     try:
-        subprocess.run(curl_command, shell=True, check=True)
-        reported_ips[ip] = current_time
-        print(f'Reported IP {ip} to AbuseIPDB successfully.')
-    except subprocess.CalledProcessError as e:
-        print(f'Failed to report IP {ip} to AbuseIPDB: {e}')
+        response = requests.post(url, data=data, headers=headers, timeout=10)
+        if response.status_code == 200:
+            reported_ips[ip] = current_time
+            print(f'Reported IP {ip} to AbuseIPDB successfully.')
+        else:
+            print(f'Failed to report IP {ip} to AbuseIPDB: {response.status_code} {response.text}')
+    except requests.RequestException as e:
+        print(f'Error reporting IP {ip} to AbuseIPDB: {e}')
 
 def ban_ip(ip):
     ban_command = f'iptables -A INPUT -s {ip} -j DROP'
@@ -94,17 +103,17 @@ def handle_connection(client, addr):
         if channel is not None:
             channel.send("Login attempt recorded. Thank you.\n")
             channel.close()
-    except (paramiko.SSHException, UnicodeDecodeError, EOFError, TimeoutError):
+    except (paramiko.SSHException, UnicodeDecodeError, EOFError, TimeoutError) as e:
         attempt = {
             'ip': addr[0],
-            'error': 'SSH protocol error',
+            'error': f'SSH protocol error: {str(e)}',
             'timestamp': datetime.utcnow().isoformat()
         }
         log_attempt(attempt)
         report_to_abuse_ipdb(addr[0])
         threading.Thread(target=ban_ip, args=(addr[0],)).start()
+    finally:
         transport.close()
-        return
 
     attempt = {
         'ip': addr[0],
@@ -117,7 +126,6 @@ def handle_connection(client, addr):
     log_attempt(attempt)
     report_to_abuse_ipdb(addr[0])
     threading.Thread(target=ban_ip, args=(addr[0],)).start()
-    transport.close()
 
 def start_server(port):
     try:
@@ -127,15 +135,20 @@ def start_server(port):
         sock.listen(100)
         print(f'Starting SSH server on port {port}')
 
-        while True:
-            client, addr = sock.accept()
-            print(f'Connection from {addr}')
-            threading.Thread(target=handle_connection, args=(client, addr)).start()
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            while True:
+                client, addr = sock.accept()
+                print(f'Connection from {addr}')
+                executor.submit(handle_connection, client, addr)
     except OSError as e:
         if e.errno == 98:
             print(f'Port {port} is already in use. Skipping...')
         else:
             print(f'Failed to start server on port {port}: {e}')
+    except Exception as e:
+        print(f'Unexpected error: {e}')
+    finally:
+        sock.close()
 
 if __name__ == "__main__":
     threads = []
