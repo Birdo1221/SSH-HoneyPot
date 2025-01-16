@@ -1,6 +1,6 @@
 # SSH Honeypot
 
-The script is designed to capture login attempts for exact credentaisl used + reporting the IP addresses to AbuseIPDB. 
+The script is designed to capture login attempts  + report the IP addresses to AbuseIPDB. 
 
 I am currently using this myself, [ AbuseipDB Results ](https://www.abuseipdb.com/user/137416) .
 
@@ -14,7 +14,10 @@ I am currently using this myself, [ AbuseipDB Results ](https://www.abuseipdb.co
 
   ### Example of the log file in action 
    
-![Example](https://github.com/user-attachments/assets/000ff986-2d39-4748-9d48-07d4eeb26f69)
+![Example](https://github.com/user-attachments/assets/bafc4425-a2e5-456a-9cfa-44cdca1a51b2)
+
+![Example2](https://github.com/user-attachments/assets/75571484-9b32-4369-881f-814992aafa08)
+
 
 ### Installation
 
