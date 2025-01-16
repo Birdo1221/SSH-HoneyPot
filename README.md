@@ -12,7 +12,7 @@ I am currently using this myself, [ AbuseipDB Results ](https://www.abuseipdb.co
 - Curl
 - iptables  ==> Linux Only, Will need to find a Windows Alternative
 
-  ### Example of the log file in action 
+  ### Example of the log in action and the abuseipdb setup reporting it.
    
 ![Example](https://github.com/user-attachments/assets/bafc4425-a2e5-456a-9cfa-44cdca1a51b2)
 
