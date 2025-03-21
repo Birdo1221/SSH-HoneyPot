@@ -1,210 +1,148 @@
+import paramiko
 import socket
 import threading
+import json
 import requests
 import subprocess
 from datetime import datetime, timedelta
 import time
-import logging
-import json
-import os
-from typing import Dict, Set
-import ipaddress
-import signal
-import sys
 
-class SMBHoneypot:
-    def __init__(self, port: int = 445, ban_duration: int = 30):
-        self.ABUSE_IPDB_API_KEY = 'Add API Key Here''
-        self.SMB_PORT = port
-        self.BAN_DURATION = ban_duration  # minutes
-        self.reported_ips: Dict[str, datetime] = {}
-        self.banned_ips: Set[str] = set()
-        self.reporting_interval = timedelta(minutes=15)
-        self.attempt_counts: Dict[str, int] = {}
-        self.setup_logging()
-        self.running = True
-        self.whitelist = self.load_whitelist()
-        
-        # Setup signal handlers for graceful shutdown
-        signal.signal(signal.SIGINT, self.shutdown_handler)
-        signal.signal(signal.SIGTERM, self.shutdown_handler)
+ABUSE_IPDB_API_KEY = '0eba5134dfb3927173f9ab46565816b08dbb67182f0de6c4d2283f897b8ae79ab6093d28d61c1ec0'
+LOG_FILE = 'ssh_login_attempts.log' # You can rename the log file if needed 
+HOST_KEY = paramiko.RSAKey.generate(2048)
+PORTS = [2222, 2200, 22222, 50000, 3389, 1337, 10001, 222, 2022, 2181, 23, 2000, 830, 2002, 5353, 8081, 6000, 5900]
 
-    def setup_logging(self):
-        """Configure logging with both file and console handlers"""
-        # Ensure logs directory exists
-        os.makedirs('logs', exist_ok=True)
-        
-        # Setup file logging with daily rotation
-        log_file = f'logs/smb_attempts_{datetime.now().strftime("%Y%m%d")}.log'
-        logging.basicConfig(
-            level=logging.INFO,
-            format='%(asctime)s - %(levelname)s - %(message)s',
-            handlers=[
-                logging.FileHandler(log_file),
-                logging.StreamHandler(sys.stdout)
-            ]
-        )
+reported_ips = {}
+reporting_interval = timedelta(minutes=15)
 
-    def load_whitelist(self) -> Set[str]:
-        """Load whitelisted IPs from config file"""
-        try:
-            with open('whitelist.json', 'r') as f:
-                return set(json.load(f))
-        except FileNotFoundError:
-            with open('whitelist.json', 'w') as f:
-                json.dump([], f)
-            return set()
+def log_attempt(attempt):
+    with open(LOG_FILE, 'a') as log_file:
+        log_file.write(json.dumps(attempt) + '\n')
 
-    def is_valid_ip(self, ip: str) -> bool:
-        """Validate IP address format"""
-        try:
-            ipaddress.ip_address(ip)
-            return True
-        except ValueError:
-            return False
+def get_geolocation(ip):
+    url = f'http://ip-api.com/json/{ip}'
+    try:
+        response = requests.get(url)
+        if response.status_code == 200:
+            return response.json()
+    except requests.RequestException as e:
+        print(f'Error fetching geolocation data: {e}')
+    return {}
 
-    def report_to_abuse_ipdb(self, ip: str) -> None:
-        """Report malicious IP to AbuseIPDB with enhanced error handling"""
-        if not self.is_valid_ip(ip):
-            logging.error(f"Invalid IP format: {ip}")
-            return
+def report_to_abuse_ipdb(ip):
+    current_time = datetime.utcnow()
+    if ip in reported_ips and (current_time - reported_ips[ip]) < reporting_interval:
+        print(f'Skipping report for IP {ip} as it was reported recently.')
+        return
+    
+    curl_command = f'curl https://api.abuseipdb.com/api/v2/report \
+        --data-urlencode "ip={ip}" \
+        -d categories=18,22 \
+        --data-urlencode "comment= [Birdo Server] SSH-Multi login Attempt" \
+        -H "Key: {ABUSE_IPDB_API_KEY}" \
+        -H "Accept: application/json"'
+    
+    try:
+        subprocess.run(curl_command, shell=True, check=True)
+        reported_ips[ip] = current_time
+        print(f'Reported IP {ip} to AbuseIPDB successfully.')
+    except subprocess.CalledProcessError as e:
+        print(f'Failed to report IP {ip} to AbuseIPDB: {e}')
 
-        current_time = datetime.utcnow()
-        if ip in self.reported_ips and (current_time - self.reported_ips[ip]) < self.reporting_interval:
-            logging.info(f'Skipping report for IP {ip} - reported recently')
-            return
+def ban_ip(ip):
+    ban_command = f'iptables -A INPUT -s {ip} -j DROP'
+    unban_command = f'iptables -D INPUT -s {ip} -j DROP'
 
-        url = "https://api.abuseipdb.com/api/v2/report"
-        headers = {
-            "Key": self.ABUSE_IPDB_API_KEY,
-            "Accept": "application/json"
+    try:
+        subprocess.run(ban_command, shell=True, check=True)
+        print(f'Banned IP {ip} successfully.')
+
+        # Unban the IP after 30 minutes
+        time.sleep(30 * 60)
+        subprocess.run(unban_command, shell=True, check=True)
+        print(f'Unbanned IP {ip} successfully.')
+    except subprocess.CalledProcessError as e:
+        print(f'Failed to ban/unban IP {ip}: {e}')
+
+class FakeSSHServer(paramiko.ServerInterface):
+    def __init__(self, client_address):
+        self.client_address = client_address
+        self.username = ""
+        self.password = ""
+    
+    def check_auth_password(self, username, password):
+        self.username = username
+        self.password = password
+        return paramiko.AUTH_SUCCESSFUL
+
+    def check_channel_request(self, kind, chanid):
+        if kind == 'session':
+            return paramiko.OPEN_SUCCEEDED
+        return paramiko.OPEN_FAILED_ADMINISTRATIVELY_PROHIBITED
+    
+    def get_allowed_auths(self, username):
+        return 'password'
+
+def handle_connection(client, addr):
+    transport = paramiko.Transport(client)
+    transport.add_server_key(HOST_KEY)
+    server = FakeSSHServer(addr)
+    
+    try:
+        transport.start_server(server=server)
+        channel = transport.accept(20)
+        if channel is not None:
+            channel.send("Login attempt recorded. Thank you.\n")
+            channel.close()
+    except (paramiko.SSHException, UnicodeDecodeError, EOFError, TimeoutError):
+        attempt = {
+            'ip': addr[0],
+            'error': 'SSH protocol error',
+            'timestamp': datetime.utcnow().isoformat()
         }
-        
-        try:
-            response = requests.post(url, 
-                data={
-                    "ip": ip,
-                    "categories": "18,14,15",
-                    "comment": f"[Birdo Server] SMB Unauthorized Attempt (Attempts: {self.attempt_counts.get(ip, 1)})"
-                },
-                headers=headers,
-                timeout=10
-            )
-            response.raise_for_status()
-            self.reported_ips[ip] = current_time
-            logging.info(f'Successfully reported IP {ip} to AbuseIPDB')
-            
-        except requests.exceptions.RequestException as e:
-            logging.error(f'Failed to report IP {ip} to AbuseIPDB: {str(e)}')
+        log_attempt(attempt)
+        report_to_abuse_ipdb(addr[0])
+        threading.Thread(target=ban_ip, args=(addr[0],)).start()
+        transport.close()
+        return
 
-    def ban_ip(self, ip: str) -> None:
-        """Ban IP using iptables with improved error handling"""
-        if ip in self.banned_ips or ip in self.whitelist:
-            return
+    attempt = {
+        'ip': addr[0],
+        'username': server.username,
+        'password': server.password,
+        'geolocation': get_geolocation(addr[0]),
+        'timestamp': datetime.utcnow().isoformat()
+    }
 
-        try:
-            # Add IP to banned set
-            self.banned_ips.add(ip)
-            
-            # Ban command with rate limiting
-            ban_command = f'iptables -A INPUT -s {ip} -p tcp --dport {self.SMB_PORT} -m state --state NEW -m recent --set'
-            subprocess.run(ban_command, shell=True, check=True, capture_output=True)
-            
-            logging.info(f'Banned IP {ip}')
-            
-            # Schedule unban
-            threading.Timer(self.BAN_DURATION * 60, self.unban_ip, args=[ip]).start()
-            
-        except subprocess.CalledProcessError as e:
-            logging.error(f'Failed to ban IP {ip}: {e.stderr.decode()}')
-            self.banned_ips.remove(ip)
+    log_attempt(attempt)
+    report_to_abuse_ipdb(addr[0])
+    threading.Thread(target=ban_ip, args=(addr[0],)).start()
+    transport.close()
 
-    def unban_ip(self, ip: str) -> None:
-        """Unban IP address"""
-        try:
-            unban_command = f'iptables -D INPUT -s {ip} -p tcp --dport {self.SMB_PORT} -m state --state NEW -m recent --remove'
-            subprocess.run(unban_command, shell=True, check=True, capture_output=True)
-            self.banned_ips.remove(ip)
-            logging.info(f'Unbanned IP {ip}')
-            
-        except subprocess.CalledProcessError as e:
-            logging.error(f'Failed to unban IP {ip}: {e.stderr.decode()}')
+def start_server(port):
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.bind(('0.0.0.0', port))
+        sock.listen(100)
+        print(f'Starting SSH server on port {port}')
 
-    def handle_connection(self, client: socket.socket, addr: tuple) -> None:
-        """Handle incoming connection attempts"""
-        ip_address = addr[0]
-        
-        if ip_address in self.whitelist:
-            logging.info(f'Whitelisted IP attempted connection: {ip_address}')
-            client.close()
-            return
-
-        # Increment attempt counter
-        self.attempt_counts[ip_address] = self.attempt_counts.get(ip_address, 0) + 1
-        
-        logging.warning(f'Unauthorized connection attempt from {ip_address} (Attempt #{self.attempt_counts[ip_address]})')
-        
-        try:
-            # Try to read any credentials sent
-            client.settimeout(5)
-            data = client.recv(1024)
-            if data:
-                # Log potential credentials/payload (safely handle encoding issues)
-                try:
-                    decoded_data = data.decode('utf-8', errors='replace')
-                    logging.info(f'Received data from {ip_address}: {decoded_data[:200]}')
-                except Exception as e:
-                    logging.error(f'Failed to decode data from {ip_address}: {str(e)}')
-                    
-        except socket.timeout:
-            logging.debug(f'No data received from {ip_address}')
-        except Exception as e:
-            logging.error(f'Error handling connection from {ip_address}: {str(e)}')
-        finally:
-            client.close()
-            
-        # Report and ban if multiple attempts
-        if self.attempt_counts[ip_address] >= 3:
-            self.report_to_abuse_ipdb(ip_address)
-            self.ban_ip(ip_address)
-
-    def start_server(self) -> None:
-        """Start the SMB honeypot server"""
-        try:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            sock.bind(('0.0.0.0', self.SMB_PORT))
-            sock.listen(100)
-            sock.settimeout(1)  # Allow for clean shutdown
-            
-            logging.info(f'SMB Honeypot started on port {self.SMB_PORT}')
-            
-            while self.running:
-                try:
-                    client, addr = sock.accept()
-                    threading.Thread(target=self.handle_connection, args=(client, addr)).start()
-                except socket.timeout:
-                    continue
-                except Exception as e:
-                    logging.error(f'Error accepting connection: {str(e)}')
-                    
-        except OSError as e:
-            if e.errno == 98:
-                logging.error(f'Port {self.SMB_PORT} is already in use')
-            else:
-                logging.error(f'Failed to start server: {str(e)}')
-        finally:
-            sock.close()
-
-    def shutdown_handler(self, signum, frame):
-        """Handle graceful shutdown"""
-        logging.info('Shutting down SMB Honeypot...')
-        self.running = False
-        
-        # Unban all IPs
-        for ip in list(self.banned_ips):
-            self.unban_ip(ip)
+        while True:
+            client, addr = sock.accept()
+            print(f'Connection from {addr}')
+            threading.Thread(target=handle_connection, args=(client, addr)).start()
+    except OSError as e:
+        if e.errno == 98:
+            print(f'Port {port} is already in use. Skipping...')
+        else:
+            print(f'Failed to start server on port {port}: {e}')
 
 if __name__ == "__main__":
-    honeypot = SMBHoneypot()
-    honeypot.start_server()
+    threads = []
+    for port in PORTS:
+        thread = threading.Thread(target=start_server, args=(port,))
+        thread.start()
+        threads.append(thread)
+    
+    for thread in threads:
+        thread.join()
