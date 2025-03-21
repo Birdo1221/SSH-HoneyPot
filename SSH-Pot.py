@@ -7,7 +7,7 @@ import subprocess
 from datetime import datetime, timedelta
 import time
 
-ABUSE_IPDB_API_KEY = '0eba5134dfb3927173f9ab46565816b08dbb67182f0de6c4d2283f897b8ae79ab6093d28d61c1ec0'
+ABUSE_IPDB_API_KEY = 'Random API strings, Example 0fd14aa5aeb7e102968a8348fd601d861b858d80a1c38bc907042df7c9e24befc076823cebf9a6a0'
 LOG_FILE = 'ssh_login_attempts.log' # You can rename the log file if needed 
 HOST_KEY = paramiko.RSAKey.generate(2048)
 PORTS = [2222, 2200, 22222, 50000, 3389, 1337, 10001, 222, 2022, 2181, 23, 2000, 830, 2002, 5353, 8081, 6000, 5900]
